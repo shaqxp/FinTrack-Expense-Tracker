@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinTrack – Expense Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00e676;
+    --accent2: #00b0ff;
+    --red: #ff5370;
+    --yellow: #ffd740;
+    --text: #e8eaf6;
+    --muted: #546e7a;
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    background-image: radial-gradient(ellipse at 20% 20%, rgba(0,230,118,0.04) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 80%, rgba(0,176,255,0.04) 0%, transparent 60%);
+  }
+  #root { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Header */
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px; padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { font-family: 'Space Mono', monospace; font-size: 1.5rem; color: var(--accent); letter-spacing: -1px; }
+  .logo span { color: var(--text); }
+  .tagline { font-size: 0.75rem; color: var(--muted); margin-top: 2px; letter-spacing: 2px; text-transform: uppercase; }
+
+  /* Budget Alert Banner */
+  .alert-banner {
+    background: linear-gradient(90deg, rgba(255,83,112,0.15), rgba(255,83,112,0.05));
+    border: 1px solid rgba(255,83,112,0.4);
+    border-radius: 10px;
+    padding: 12px 20px;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.875rem; color: var(--red);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+  /* Summary Cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: var(--card-shadow);
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card-label { font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .card-value { font-family: 'Space Mono', monospace; font-size: 1.75rem; font-weight: 700; }
+  .card-value.green { color: var(--accent); }
+  .card-value.red { color: var(--red); }
+  .card-value.blue { color: var(--accent2); }
+  .card-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  /* Main Layout */
+  .main-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+  @media(max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* Charts Section */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media(max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .chart-title { font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  /* Transactions */
+  .tx-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 4px; }
+  .tx-list::-webkit-scrollbar { width: 4px; }
+  .tx-list::-webkit-scrollbar-track { background: transparent; }
+  .tx-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .tx-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    transition: all 0.2s;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .tx-item:hover { border-color: var(--border); background: #1f2d42; }
+  .tx-emoji { font-size: 1.4rem; width: 36px; text-align: center; }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-name { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .tx-amount { font-family: 'Space Mono', monospace; font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
+  .tx-amount.income { color: var(--accent); }
+  .tx-amount.expense { color: var(--red); }
+  .tx-delete { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px; border-radius: 4px; transition: color 0.2s; }
+  .tx-delete:hover { color: var(--red); }
+
+  /* Form Panel */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .panel-title { font-family: 'Space Mono', monospace; font-size: 0.85rem; color: var(--accent); margin-bottom: 20px; letter-spacing: 1px; }
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  input, select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    transition: border-color 0.2s; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,230,118,0.1); }
+  select option { background: var(--surface2); }
+  .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .type-btn {
+    padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .type-btn.active-income { background: rgba(0,230,118,0.15); border-color: var(--accent); color: var(--accent); }
+  .type-btn.active-expense { background: rgba(255,83,112,0.15); border-color: var(--red); color: var(--red); }
+  .submit-btn {
+    width: 100%; padding: 12px; background: var(--accent); color: #0a0e1a;
+    border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s; margin-top: 4px;
+  }
+  .submit-btn:hover { background: #00ff85; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,230,118,0.3); }
+  .submit-btn:active { transform: translateY(0); }
+
+  /* Budget Section */
+  .budget-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .budget-bar-wrap { background: var(--surface2); border-radius: 6px; height: 8px; margin-top: 10px; overflow: hidden; }
+  .budget-bar { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+
+  /* Currency Converter */
+  .converter { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .conv-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: end; }
+  .conv-arrow { font-size: 1.2rem; text-align: center; color: var(--muted); padding-bottom: 10px; }
+  .conv-result { font-family: 'Space Mono', monospace; font-size: 1rem; color: var(--accent2); margin-top: 10px; text-align: center; min-height: 24px; }
+  .conv-btn {
+    width: 100%; margin-top: 10px; padding: 9px; background: rgba(0,176,255,0.15);
+    border: 1px solid rgba(0,176,255,0.4); color: var(--accent2); border-radius: 8px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .conv-btn:hover { background: rgba(0,176,255,0.25); }
+  .conv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Section Header */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .section-title { font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .clear-btn { font-size: 0.72rem; color: var(--muted); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: color 0.2s; }
+  .clear-btn:hover { color: var(--red); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 0.875rem; }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 8px; opacity: 0.5; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const CATEGORIES = {
+  Food: "🍜", Transport: "🚗", Rent: "🏠", Shopping: "🛍️",
+  Health: "💊", Entertainment: "🎬", Travel: "✈️", Education: "📚",
+  Salary: "💰", Freelance: "💻", Investment: "📈", Other: "📦"
+};
+const EXPENSE_CATS = ["Food","Transport","Rent","Shopping","Health","Entertainment","Travel","Education","Other"];
+const INCOME_CATS  = ["Salary","Freelance","Investment","Other"];
+
+const CURRENCIES = ["USD","EUR","GBP","INR","JPY","AED","SGD","CAD","AUD","CHF"];
+
+const CAT_COLORS = [
+  "#00e676","#00b0ff","#ffd740","#ff5370","#e040fb","#40c4ff","#69f0ae","#ff6e40","#b2ff59","#ea80fc"
+];
+
+const fmt = (n) => new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+const DEFAULT_TXS = [
+  { id: 1, name: "Monthly Salary", amount: 50000, type: "income", category: "Salary", date: "2024-06-01" },
+  { id: 2, name: "House Rent", amount: 12000, type: "expense", category: "Rent", date: "2024-06-02" },
+  { id: 3, name: "Groceries", amount: 3200, type: "expense", category: "Food", date: "2024-06-05" },
+  { id: 4, name: "Metro Pass", amount: 500, type: "expense", category: "Transport", date: "2024-06-06" },
+  { id: 5, name: "Freelance Project", amount: 15000, type: "income", category: "Freelance", date: "2024-06-10" },
+  { id: 6, name: "Netflix + Hotstar", amount: 799, type: "expense", category: "Entertainment", date: "2024-06-11" },
+  { id: 7, name: "Medical Checkup", amount: 1200, type: "expense", category: "Health", date: "2024-06-15" },
+];
+
+function PieChart({ data }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    if (!ref.current || !data.length) return;
+    const labels = data.map(d => d.label);
+    const values = data.map(d => d.value);
+    const colors = data.map((_, i) => CAT_COLORS[i % CAT_COLORS.length]);
+    chartRef.current = new Chart(ref.current, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#111827', borderWidth: 3, hoverOffset: 6 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#546e7a', font: { size: 10 }, boxWidth: 10, padding: 8 } },
+          tooltip: { callbacks: { label: ctx => ` ₹${fmt(ctx.parsed)}` } }
+        },
+        cutout: '65%',
+        animation: { animateRotate: true, duration: 800 }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [data]);
+  return <canvas ref={ref} />;
+}
+
+function BarChart({ data }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    if (!ref.current || !data.length) return;
+    chartRef.current = new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [
+          { label: 'Income', data: data.map(d => d.income), backgroundColor: 'rgba(0,230,118,0.7)', borderRadius: 4 },
+          { label: 'Expense', data: data.map(d => d.expense), backgroundColor: 'rgba(255,83,112,0.7)', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#546e7a', font: { size: 10 }, boxWidth: 10 } } },
+        scales: {
+          x: { ticks: { color: '#546e7a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#546e7a', font: { size: 10 }, callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        },
+        animation: { duration: 600 }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [data]);
+  return <canvas ref={ref} />;
+}
+
+function App() {
+  const [txs, setTxs] = useState(DEFAULT_TXS);
+  const [form, setForm] = useState({ name: '', amount: '', type: 'expense', category: 'Food', date: new Date().toISOString().split('T')[0] });
+  const [budget, setBudget] = useState(20000);
+  const [conv, setConv] = useState({ amount: '', from: 'INR', to: 'USD', result: '', loading: false });
+
+  const totalIncome  = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const balance = totalIncome - totalExpense;
+  const budgetUsed = Math.min((totalExpense / budget) * 100, 100);
+  const budgetOver = totalExpense > budget;
+
+  // Pie data: expenses by category
+  const catMap = {};
+  txs.filter(t => t.type === 'expense').forEach(t => { catMap[t.category] = (catMap[t.category] || 0) + t.amount; });
+  const pieData = Object.entries(catMap).map(([label, value]) => ({ label, value }));
+
+  // Bar data: last 4 months (mock — group by month)
+  const monthMap = {};
+  txs.forEach(t => {
+    const m = t.date ? t.date.slice(0, 7) : 'Unknown';
+    if (!monthMap[m]) monthMap[m] = { income: 0, expense: 0 };
+    monthMap[m][t.type] += t.amount;
+  });
+  const barData = Object.entries(monthMap).sort().slice(-6).map(([k, v]) => ({
+    label: new Date(k + '-01').toLocaleString('default', { month: 'short' }),
+    ...v
+  }));
+
+  const addTx = () => {
+    if (!form.name.trim() || !form.amount || isNaN(form.amount) || Number(form.amount) <= 0) return;
+    setTxs(prev => [{ id: Date.now(), ...form, amount: Number(form.amount) }, ...prev]);
+    setForm(f => ({ ...f, name: '', amount: '' }));
+  };
+
+  const convert = async () => {
+    if (!conv.amount || isNaN(conv.amount)) return;
+    setConv(c => ({ ...c, loading: true, result: '' }));
+    const amount = Number(conv.amount);
+    const fromCode = conv.from.toLowerCase();
+    const toCode = conv.to.toLowerCase();
+    try {
+      // Primary: Frankfurter (updated URL, doesn't support INR — ECB-based)
+      let rate = null;
+      try {
+        const res = await fetch(`https://api.frankfurter.dev/v2/rates?base=${conv.from}&quotes=${conv.to}`);
+        const data = await res.json();
+        if (data && Array.isArray(data) && data[0]?.rate) {
+          rate = data[0].rate;
+        }
+      } catch {}
+
+      // Fallback: fawazahmed0 exchange-api (supports INR, no key, no rate limit)
+      if (!rate) {
+        const res2 = await fetch(`https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${fromCode}.json`);
+        const data2 = await res2.json();
+        rate = data2[fromCode]?.[toCode];
+      }
+
+      if (!rate) throw new Error('No rate found');
+      const converted = (amount * rate).toFixed(2);
+      setConv(c => ({ ...c, result: `${amount} ${conv.from} = ${fmt(converted)} ${conv.to}`, loading: false }));
+    } catch {
+      setConv(c => ({ ...c, result: 'Could not fetch rates. Try again.', loading: false }));
+    }
+  };
+
+  const cats = form.type === 'income' ? INCOME_CATS : EXPENSE_CATS;
+
+  return (
+    <div>
+      <div className="header">
+        <div>
+          <div className="logo">Fin<span>Track</span></div>
+          <div className="tagline">Personal Finance Dashboard</div>
+        </div>
+        <div style={{ fontFamily: 'Space Mono', fontSize: '0.75rem', color: 'var(--muted)' }}>
+          {new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}
+        </div>
+      </div>
+
+      {budgetOver && (
+        <div className="alert-banner">
+          ⚠️ Budget Exceeded! You've spent ₹{fmt(totalExpense)} against your ₹{fmt(budget)} budget.
+        </div>
+      )}
+
+      <div className="summary-grid">
+        <div className="card">
+          <div className="card-label">Balance</div>
+          <div className={`card-value ${balance >= 0 ? 'blue' : 'red'}`}>₹{fmt(Math.abs(balance))}</div>
+          <div className="card-sub">{balance >= 0 ? 'Surplus' : 'Deficit'} this period</div>
+        </div>
+        <div className="card">
+          <div className="card-label">Total Income</div>
+          <div className="card-value green">₹{fmt(totalIncome)}</div>
+          <div className="card-sub">{txs.filter(t=>t.type==='income').length} transactions</div>
+        </div>
+        <div className="card">
+          <div className="card-label">Total Expenses</div>
+          <div className="card-value red">₹{fmt(totalExpense)}</div>
+          <div className="card-sub">{txs.filter(t=>t.type==='expense').length} transactions</div>
+        </div>
+        <div className="card">
+          <div className="card-label">Savings Rate</div>
+          <div className="card-value green">{totalIncome > 0 ? ((balance/totalIncome)*100).toFixed(1) : 0}%</div>
+          <div className="card-sub">of income saved</div>
+        </div>
+      </div>
+
+      <div className="main-grid">
+        <div>
+          <div className="charts-grid">
+            <div className="chart-card">
+              <div className="chart-title">Spending by Category</div>
+              <div className="chart-wrap">
+                {pieData.length > 0 ? <PieChart data={pieData} /> : <div className="empty-state"><div className="empty-icon">📊</div>No expense data yet</div>}
+              </div>
+            </div>
+            <div className="chart-card">
+              <div className="chart-title">Monthly Overview</div>
+              <div className="chart-wrap">
+                {barData.length > 0 ? <BarChart data={barData} /> : <div className="empty-state"><div className="empty-icon">📈</div>No data yet</div>}
+              </div>
+            </div>
+          </div>
+
+          <div className="chart-card">
+            <div className="section-header">
+              <span className="section-title">Transactions</span>
+              {txs.length > 0 && <button className="clear-btn" onClick={() => setTxs([])}>Clear all</button>}
+            </div>
+            {txs.length === 0
+              ? <div className="empty-state"><div className="empty-icon">💸</div>No transactions yet. Add one!</div>
+              : <div className="tx-list">
+                  {txs.map(t => (
+                    <div className="tx-item" key={t.id}>
+                      <div className="tx-emoji">{CATEGORIES[t.category] || '📦'}</div>
+                      <div className="tx-info">
+                        <div className="tx-name">{t.name}</div>
+                        <div className="tx-meta">{t.category} · {t.date}</div>
+                      </div>
+                      <div className={`tx-amount ${t.type}`}>{t.type === 'income' ? '+' : '-'}₹{fmt(t.amount)}</div>
+                      <button className="tx-delete" onClick={() => setTxs(p => p.filter(x => x.id !== t.id))}>✕</button>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        </div>
+
+        <div>
+          <div className="panel">
+            <div className="panel-title">// ADD TRANSACTION</div>
+            <div className="type-toggle">
+              <button className={`type-btn ${form.type==='income'?'active-income':''}`} onClick={() => setForm(f => ({ ...f, type: 'income', category: 'Salary' }))}>+ Income</button>
+              <button className={`type-btn ${form.type==='expense'?'active-expense':''}`} onClick={() => setForm(f => ({ ...f, type: 'expense', category: 'Food' }))}>- Expense</button>
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <input placeholder="e.g. Monthly Salary, Uber ride…" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && addTx()} />
+            </div>
+            <div className="form-group">
+              <label>Amount (₹)</label>
+              <input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} onKeyDown={e => e.key === 'Enter' && addTx()} />
+            </div>
+            <div className="form-group">
+              <label>Category</label>
+              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                {cats.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Date</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+            </div>
+            <button className="submit-btn" onClick={addTx}>Add Transaction</button>
+
+            <div className="budget-section">
+              <div className="panel-title" style={{marginBottom:'12px'}}>// BUDGET TRACKER</div>
+              <div className="form-group">
+                <label>Monthly Budget (₹)</label>
+                <input type="number" value={budget} onChange={e => setBudget(Number(e.target.value))} />
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.75rem', color:'var(--muted)', marginBottom:'4px' }}>
+                <span>₹{fmt(totalExpense)} spent</span>
+                <span style={{ color: budgetOver ? 'var(--red)' : 'var(--accent)' }}>{budgetUsed.toFixed(1)}%</span>
+              </div>
+              <div className="budget-bar-wrap">
+                <div className="budget-bar" style={{ width: `${budgetUsed}%`, background: budgetOver ? 'var(--red)' : budgetUsed > 75 ? 'var(--yellow)' : 'var(--accent)' }} />
+              </div>
+              <div style={{ fontSize:'0.72rem', color:'var(--muted)', marginTop:'6px' }}>
+                {budgetOver ? `₹${fmt(totalExpense - budget)} over budget` : `₹${fmt(budget - totalExpense)} remaining`}
+              </div>
+            </div>
+
+            <div className="converter">
+              <div className="panel-title" style={{marginBottom:'12px'}}>// CURRENCY CONVERTER</div>
+              <div className="form-group">
+                <label>Amount</label>
+                <input type="number" placeholder="1000" value={conv.amount} onChange={e => setConv(c => ({ ...c, amount: e.target.value }))} />
+              </div>
+              <div className="conv-row">
+                <div>
+                  <label>From</label>
+                  <select value={conv.from} onChange={e => setConv(c => ({ ...c, from: e.target.value, result: '' }))}>
+                    {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="conv-arrow">→</div>
+                <div>
+                  <label>To</label>
+                  <select value={conv.to} onChange={e => setConv(c => ({ ...c, to: e.target.value, result: '' }))}>
+                    {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button className="conv-btn" onClick={convert} disabled={conv.loading}>
+                {conv.loading ? 'Fetching rates…' : 'Convert'}
+              </button>
+              {conv.result && <div className="conv-result">{conv.result}</div>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
